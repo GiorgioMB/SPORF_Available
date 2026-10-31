@@ -186,6 +186,8 @@ def test_iris_perfect_train(projection_matrix):
 
     n_forests_to_try = 100
     for i in range(n_forests_to_try):
+        # a different but fixed seed per forest keeps the test deterministic
+        clf.set_params(random_state=i)
         clf.fit(iris_full.data, iris_full.target)
         y_pred_train = clf.predict(iris_full.data)
         y_train_acc_list.append(metrics.accuracy_score(iris_full.target, y_pred_train))
