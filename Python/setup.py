@@ -1,162 +1,158 @@
+"""Build script for the rerf package (Python bindings to packedForest).
+
+Build requirements are declared in pyproject.toml. To upload to PyPI see
+PUBLISH.md.
+"""
+
+import os
+import re
+import shutil
 import subprocess
 import sys
-from distutils.errors import CompileError
-from os import path
+import tempfile
 
-from setuptools import Extension, find_packages, setup
-from setuptools.command.build_ext import build_ext
+from pybind11.setup_helpers import Pybind11Extension, build_ext
+from setuptools import find_packages, setup
+from setuptools.errors import CompileError
 
-from rerf import __version__
-
-"""
-To upload to pypi see PUBLISH.md
-"""
-
-here = path.abspath(path.dirname(__file__))
-
-with open(path.join(here, "requirements.txt"), encoding="utf-8") as f:
-    required = f.read().splitlines()
-
+here = os.path.abspath(os.path.dirname(__file__))
 
 PACKAGE_NAME = "rerf"
 DESCRIPTION = "Randomer Forest (RerF) Python Package"
-
-with open(path.join(here, "README.md"), encoding="utf-8") as f:
-    LONG_DESCRIPTION = f.read()
 URL = "https://github.com/neurodata/RerF"
 AUTHOR = "NeuroData"
 AUTHOR_EMAIL = "software@neurodata.io"
-MINIMUM_PYTHON_VERSION = 3, 6  # Minimum of Python 3.6
 
 
-def check_python_version():
-    """Exit when the Python version is too low."""
-    if sys.version_info < MINIMUM_PYTHON_VERSION:
-        sys.exit("Python {}.{}+ is required.".format(*MINIMUM_PYTHON_VERSION))
+def read_version():
+    """Read __version__ from rerf/__init__.py without importing the package."""
+    with open(os.path.join(here, "rerf", "__init__.py"), encoding="utf-8") as f:
+        match = re.search(r'^__version__\s*=\s*["\']([^"\']+)["\']', f.read(), re.M)
+    if match is None:
+        raise RuntimeError("Unable to find __version__ in rerf/__init__.py")
+    return match.group(1)
 
 
-class get_pybind_include(object):
-    """Helper class to determine the pybind11 include path
+with open(os.path.join(here, "requirements.txt"), encoding="utf-8") as f:
+    required = [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
-    The purpose of this class is to postpone importing pybind11
-    until it is actually installed, so that the ``get_include()``
-    method can be invoked. """
-
-    def __init__(self, user=False):
-        self.user = user
-
-    def __str__(self):
-        import pybind11
-
-        return pybind11.get_include(self.user)
+with open(os.path.join(here, "README.md"), encoding="utf-8") as f:
+    LONG_DESCRIPTION = f.read()
 
 
-ext_modules = [
-    Extension(
-        "pyfp",
-        ["src/packedForest.cpp"],
-        include_dirs=[
-            # Path to pybind11 headers
-            get_pybind_include(),
-            get_pybind_include(user=True),
-            "src/src/",
-        ],
-        language="c++",
-    )
-]
+OPENMP_TEST_PROGRAM = """
+#include <omp.h>
+int main() {
+    int n = 0;
+    #pragma omp parallel reduction(+ : n)
+    n += 1;
+    return n > 0 ? 0 : 1;
+}
+"""
 
 
-# As of Python 3.6, CCompiler has a `has_flag` method.
-# cf http://bugs.python.org/issue26689
-def has_flag(compiler, flagname):
-    """Return a boolean indicating whether a flag name is supported on
-    the specified compiler.
-    """
-    import tempfile
+def homebrew_libomp_prefixes():
+    """Return existing Homebrew libomp prefixes (for Apple clang on macOS)."""
+    candidates = []
+    if shutil.which("brew"):
+        result = subprocess.run(
+            ["brew", "--prefix", "libomp"], capture_output=True, text=True
+        )
+        if result.returncode == 0:
+            candidates.append(result.stdout.strip())
+    candidates += ["/opt/homebrew/opt/libomp", "/usr/local/opt/libomp"]
 
-    with tempfile.NamedTemporaryFile("w", suffix=".cpp") as f:
-        f.write("int main (int argc, char **argv) { return 0; }")
+    prefixes = []
+    for prefix in candidates:
+        if prefix and prefix not in prefixes:
+            if os.path.isfile(os.path.join(prefix, "include", "omp.h")):
+                prefixes.append(prefix)
+    return prefixes
+
+
+def compiles(compiler, extra_args):
+    """Return True if the OpenMP test program compiles with extra_args."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        source = os.path.join(tmpdir, "openmp_test.cpp")
+        with open(source, "w") as f:
+            f.write(OPENMP_TEST_PROGRAM)
         try:
-            compiler.compile([f.name], extra_postargs=[flagname])
+            compiler.compile([source], output_dir=tmpdir, extra_postargs=extra_args)
         except CompileError:
             return False
     return True
 
 
-def cpp_flag(compiler):
-    """Return the -std=c++[11/14] compiler flag.
+def openmp_flags(compiler):
+    """Return (compile_args, link_args) that enable OpenMP, or None.
 
-    The c++14 is prefered over c++11 (when it is available).
+    Set RERF_DISABLE_OPENMP=1 to skip the check and build single-threaded.
     """
-    if has_flag(compiler, "-std=c++14"):
-        return "-std=c++14"
-    elif has_flag(compiler, "-std=c++11"):
-        return "-std=c++11"
+    if os.environ.get("RERF_DISABLE_OPENMP"):
+        return None
+
+    if compiler.compiler_type == "msvc":
+        candidates = [(["/openmp"], [])]
     else:
-        raise RuntimeError(
-            "Unsupported compiler -- at least C++11 support " "is needed!"
-        )
+        # GCC, and LLVM clang where libomp is installed.
+        candidates = [(["-fopenmp"], ["-fopenmp"])]
+        if sys.platform == "darwin":
+            # Apple clang needs the Homebrew libomp runtime passed explicitly.
+            for prefix in homebrew_libomp_prefixes():
+                candidates.append(
+                    (
+                        ["-Xpreprocessor", "-fopenmp", "-I" + prefix + "/include"],
+                        ["-L" + prefix + "/lib", "-lomp"],
+                    )
+                )
+
+    for compile_args, link_args in candidates:
+        if compiles(compiler, compile_args):
+            return compile_args, link_args
+    return None
 
 
 class BuildExt(build_ext):
-    """A custom build extension for adding compiler-specific options."""
-
-    extra_include = "include"
-
-    c_opts = {
-        "msvc": ["/EHsc", "/openmp"],
-        "unix": [
-            "-Xpreprocessor",
-            "-fopenmp",
-            "-Wall",
-            "-O3",
-            "-DNDEBUG",
-            "-ffast-math",
-            "-I{}".format(extra_include),
-            "-I/usr/local/include",
-        ],
-    }
-
-    l_opts = {"msvc": [], "unix": []}
-
-    if sys.platform == "darwin":
-        darwin_opts = ["-stdlib=libc++", "-mmacosx-version-min=10.7"]
-        c_opts["unix"] += darwin_opts
-        l_opts["unix"] += darwin_opts
-
-        ompbase = subprocess.run(["brew", "--prefix", "libomp"], stdout=subprocess.PIPE)
-        omploc = ompbase.stdout.decode("utf-8").strip()
-
-        c_opts["unix"] += [
-            "-lomp",
-            "-I{}/include".format(omploc),
-            "-L{}/lib".format(omploc),
-        ]
+    """build_ext that adds optimisation flags and OpenMP when available."""
 
     def build_extensions(self):
-        ct = self.compiler.compiler_type
-        opts = self.c_opts.get(ct, [])
-        link_opts = self.l_opts.get(ct, [])
-        if ct == "unix":
-            opts.append('-DVERSION_INFO="%s"' % self.distribution.get_version())
-            opts.append(cpp_flag(self.compiler))
-            if has_flag(self.compiler, "-fvisibility=hidden"):
-                opts.append("-fvisibility=hidden")
-        elif ct == "msvc":
-            opts.append('/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version())
+        msvc = self.compiler.compiler_type == "msvc"
+        compile_args = [] if msvc else ["-O3", "-DNDEBUG", "-ffast-math"]
+        link_args = []
+
+        flags = openmp_flags(self.compiler)
+        if flags is not None:
+            compile_args += flags[0]
+            link_args += flags[1]
+        else:
+            print(
+                "WARNING: OpenMP was not found, so rerf is being built without "
+                "multithreading (n_jobs will have no effect). On macOS, "
+                "'brew install libomp' and reinstall to enable it.",
+                file=sys.stderr,
+            )
+            if not msvc:
+                compile_args.append("-Wno-unknown-pragmas")
+
         for ext in self.extensions:
-            ext.extra_compile_args = opts
-            ext.extra_link_args = link_opts
-            if ct == "unix":
-                ext.extra_link_args = ["-lgomp"]
-        build_ext.build_extensions(self)
+            ext.extra_compile_args = list(ext.extra_compile_args) + compile_args
+            ext.extra_link_args = list(ext.extra_link_args) + link_args
+        super().build_extensions()
 
 
-check_python_version()
+ext_modules = [
+    Pybind11Extension(
+        "pyfp",
+        ["src/packedForest.cpp"],
+        include_dirs=["src/src/"],
+        cxx_std=14,
+    )
+]
+
 
 setup(
     name=PACKAGE_NAME,
-    version=__version__,
+    version=read_version(),
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
@@ -164,7 +160,7 @@ setup(
     author_email=AUTHOR_EMAIL,
     ext_modules=ext_modules,
     install_requires=required,
-    setup_requires=["pybind11>=2.2"],
+    python_requires=">=3.8",
     cmdclass={"build_ext": BuildExt},
     zip_safe=False,
     url=URL,

@@ -7,7 +7,9 @@
 #include <ctime>
 #include <chrono>
 #include <cstdlib>
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 #include "rfTree.h"
 #include <map>
 

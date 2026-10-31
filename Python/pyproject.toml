@@ -1,0 +1,5 @@
+[build-system]
+# setuptools>=64 for PEP 660 editable installs (pip install -e .).
+# pybind11>=2.12 for NumPy 2 support.
+requires = ["setuptools>=64", "pybind11>=2.12"]
+build-backend = "setuptools.build_meta"
