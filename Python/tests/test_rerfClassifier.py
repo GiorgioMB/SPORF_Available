@@ -7,6 +7,8 @@ import re
 import numpy as np
 import pytest
 from sklearn import datasets, metrics
+from sklearn.base import is_classifier
+from sklearn.model_selection import cross_val_score
 from sklearn.utils.validation import check_random_state
 
 from rerf.rerfClassifier import rerfClassifier
@@ -81,6 +83,21 @@ def test_alt_attributes():
 
     assert clf.n_jobs_ == 3
     assert clf.mtry_ == 4
+
+
+def test_is_sklearn_classifier():
+    # scikit-learn >= 1.6 reads the estimator type from tags, which only
+    # works when ClassifierMixin comes before BaseEstimator in the bases.
+    clf = rerfClassifier(n_estimators=10, random_state=0)
+    assert is_classifier(clf)
+
+    # load_iris() is sorted by class, so this only succeeds if
+    # cross_val_score picks stratified folds for a classifier.
+    iris_full = datasets.load_iris()
+    scores = cross_val_score(
+        clf, iris_full.data, iris_full.target, cv=3, error_score="raise"
+    )
+    assert scores.min() > 0.8
 
 
 def prep_digit_data():

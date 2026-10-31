@@ -11,7 +11,7 @@ from sklearn.exceptions import DataConversionWarning
 import pyfp
 
 
-class rerfClassifier(BaseEstimator, ClassifierMixin):
+class rerfClassifier(ClassifierMixin, BaseEstimator):
     """A random forest classifier.
 
     Supports both Random Forest, developed by Breiman (2001) [#Breiman]_, as well as
