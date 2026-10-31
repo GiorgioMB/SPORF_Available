@@ -89,17 +89,12 @@ namespace fp{
 							for (unsigned int j=0; j<=i; ++j) {
 								std::pair<int, int> pair1 = std::make_pair(leafObs[i], leafObs[j]);
 								
-									if(pairMat.count(pair1) > 0){
-										#pragma omp critical
-										{
+									#pragma omp critical
+									{
+										if(pairMat.count(pair1) > 0)
 											pairMat[pair1]++;
-										}
-									}
-									else{
-										#pragma omp critical
-										{
+										else
 											pairMat.insert({pair1, 1});
-										}
 									}
 								}
 							}
