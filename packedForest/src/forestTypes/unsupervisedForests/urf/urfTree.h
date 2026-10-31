@@ -6,12 +6,7 @@
 #include <map>
 #include <assert.h>
 #include <random>
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/Sparse>
-#include <eigen3/Eigen/Core>
-
-typedef Eigen::SparseMatrix<double> SpMat;
-typedef Eigen::Triplet<double> TripType;
+#include <limits>
 
 namespace fp{
 

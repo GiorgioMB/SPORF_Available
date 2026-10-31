@@ -11,11 +11,6 @@
 #include <chrono>
 #include <cstdlib>
 #include "urfTree.h"
-#include <sys/time.h>
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/Sparse>
-#include <eigen3/Eigen/Core>
-using namespace Eigen;
 
 namespace fp {
 
@@ -26,10 +21,6 @@ namespace fp {
 			std::vector<urfTree<T> > trees;
 			std::map<int, std::map<int, int> > simMat;
 			std::map<std::pair<int, int>, double> pairMat;	
-			typedef Eigen::SparseMatrix<int> spMat;
-			typedef Eigen::Triplet<int> TripType;
-			std::vector<TripType> tripletList;
-			SpMat eigenMat;
 		public:
 
 			~fpURFBase(){}
@@ -62,32 +53,6 @@ namespace fp {
 			inline void checkParameters(){
 				//TODO: check parameters to make sure they make sense for this forest type.
 				;
-			}
-
-			inline void createSparseMat(){
-				//Not in use now. TODO: Remove entirely?
-				auto numObs = fpSingleton::getSingleton().returnNumObservations();
-				SpMat eigenSimMat(numObs, numObs);
-				for (auto it=pairMat.begin(); it!=pairMat.end(); ++it){
-					int i = (it->first).first;
-					int j = (it->first).second;
-					int v_ij = it->second;
-					eigenSimMat.coeffRef(i, j) = v_ij;
-				}
-				eigenSimMat.makeCompressed();
-				this->eigenMat = eigenSimMat ;
-			}			
-
-			
-			inline void printSparseMat(){
-				//Not in use now. TODO: Remove entirely?
-				for (int k = 0; k < eigenMat.outerSize(); ++k){
-    					for (Eigen::SparseMatrix<double>::InnerIterator it(eigenMat, k); it; ++it){
-        					std::cout << it.row() <<"\t";
-        					std::cout << it.col() << "\t";
-        					std::cout << it.value() << "\n";
-    					}
-				}
 			}
 
 			inline void treeStats(){

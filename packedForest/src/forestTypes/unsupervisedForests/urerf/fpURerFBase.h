@@ -1,5 +1,5 @@
-#ifndef fpRerF_h
-#define fpRerf_h
+#ifndef fpURerF_h
+#define fpURerF_h
 
 #include "../../../baseFunctions/fpForestBase.h"
 #include <vector>
@@ -11,7 +11,6 @@
 #include <chrono>
 #include <cstdlib>
 #include "urerfTree.h"
-#include <sys/time.h>
 
 namespace fp {
 	template <typename T>
@@ -21,10 +20,6 @@ namespace fp {
 			std::vector<urerfTree<T> > trees;
 			std::map<int, std::map<int, int> > simMat;
                         std::map<std::pair<int, int>, double> pairMat;
-                        typedef Eigen::SparseMatrix<int> spMat;
-                        typedef Eigen::Triplet<int> TripType;
-                        std::vector<TripType> tripletList;
-                        SpMat eigenMat;
 		public:
 
 			~fpURerFBase(){}
@@ -44,20 +39,6 @@ namespace fp {
 					std::map<int, int> init_map;
 					simMat[i] = init_map;
 				}
-			}
-
-                        inline void createSparseMat(){
-				//Not in use now. TODO: Remove entirely?
-				auto numObs = fpSingleton::getSingleton().returnNumObservations();
-				SpMat eigenSimMat(numObs, numObs);
-				for (auto it=pairMat.begin(); it!=pairMat.end(); ++it) {
-					int i = (it->first).first;
-					int j = (it->first).second;
-					int v_ij = it->second;
-					eigenSimMat.coeffRef(i, j) = v_ij;
-				}
-				eigenSimMat.makeCompressed();
-				this->eigenMat = eigenSimMat;
 			}
 
 			inline void growTrees(){
