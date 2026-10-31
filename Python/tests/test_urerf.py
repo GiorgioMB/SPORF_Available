@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from sklearn.cluster import AgglomerativeClustering
-from sklearn.datasets.samples_generator import make_blobs
+from sklearn.datasets import make_blobs
 from sklearn.metrics import adjusted_rand_score
 
 from rerf.urerf import UnsupervisedRandomForest, pair_mat_to_sparse

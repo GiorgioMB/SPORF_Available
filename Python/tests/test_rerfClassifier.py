@@ -25,13 +25,6 @@ perm = rng.permutation(iris.target.size)
 iris.data = iris.data[perm]
 iris.target = iris.target[perm]
 
-# also load the boston dataset
-# and randomly permute it
-boston = datasets.load_boston()
-perm = rng.permutation(boston.target.size)
-boston.data = boston.data[perm]
-boston.target = boston.target[perm]
-
 
 @pytest.mark.parametrize("projection_matrix", ("RerF", "Base"))
 def test_classification_toy(projection_matrix):
