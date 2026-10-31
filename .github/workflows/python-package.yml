@@ -1,0 +1,50 @@
+name: Python package
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}${{ !matrix.openmp && ' / no OpenMP' || '' }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        openmp: [true]
+        include:
+          # Also test the single-threaded build used when OpenMP is missing.
+          - os: ubuntu-latest
+            python-version: "3.12"
+            openmp: false
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install OpenMP runtime (macOS)
+        if: runner.os == 'macOS' && matrix.openmp
+        run: brew install libomp
+
+      - name: Build and install rerf
+        env:
+          RERF_DISABLE_OPENMP: ${{ !matrix.openmp && '1' || '' }}
+        run: python -m pip install -v ./Python pytest
+
+      - name: Show which OpenMP runtime was linked
+        shell: bash
+        run: |
+          so=$(python -c "import pyfp; print(pyfp.__file__)")
+          if [ "$RUNNER_OS" = macOS ]; then otool -L "$so"; else ldd "$so"; fi
+
+      - name: Run tests
+        run: python -m pytest
