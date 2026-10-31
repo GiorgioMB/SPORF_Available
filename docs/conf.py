@@ -21,8 +21,6 @@ from github_link import make_linkcode_resolve
 
 from rerf import __version__
 
-from recommonmark.parser import CommonMarkParser
-
 # -- Project information -----------------------------------------------------
 
 project = "RerF"
@@ -48,18 +46,19 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinx.ext.linkcode",
-    "nbsphinx",
+    "myst_nb",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
-# The suffix(es) of source filenames.
-# You can specify multiple suffix as a list of string:
-#
-source_parsers = {".md": CommonMarkParser}
-source_suffix = [".rst", ".md"]
-# source_suffix = ".rst"
+# Markdown (.md) and notebook (.ipynb) sources are handled by myst_nb, which
+# registers those suffixes itself. Notebooks are rendered with their stored
+# outputs and never executed, and "$...$" math in Markdown cells is enabled.
+nb_execution_mode = "off"
+myst_enable_extensions = ["dollarmath"]
+# Several notebooks start at a level-2 heading; that is fine for these pages.
+suppress_warnings = ["myst.header"]
 
 # The master toctree document.
 master_doc = "index"
@@ -69,7 +68,7 @@ master_doc = "index"
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -86,10 +85,7 @@ pygments_style = None
 # a list of builtin themes.
 #
 # Use RTD Theme
-import sphinx_rtd_theme
-
 html_theme = "sphinx_rtd_theme"
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 html_theme_options = {
     #'includehidden': False,
     "navigation_depth": 2,
@@ -201,17 +197,31 @@ html_context = {
     "github_version": "staging/docs/",
 }
 
-linkcode_resolve = make_linkcode_resolve(
+_linkcode_resolve = make_linkcode_resolve(
     "rerf",
     u"https://github.com/neurodata/"
     "RerF/blob/{revision}/"
     "Python/{package}/{path}#L{lineno}",
 )
 
+
+def linkcode_resolve(domain, info):
+    # Sphinx expects a plain function here, not a functools.partial.
+    return _linkcode_resolve(domain, info)
+
 napoleon_numpy_docstring = True
+
+
+def skip_sklearn_metadata_request(app, what, name, obj, skip, options):
+    # scikit-learn >= 1.3 adds set_*_request methods (metadata routing) to
+    # estimators; they are not part of the rerf API.
+    if name.startswith("set_") and name.endswith("_request"):
+        return True
+    return None
 
 
 def setup(app):
     # to hide/show the prompt in code examples:
-    app.add_javascript("js/copybutton.js")
+    app.add_js_file("js/copybutton.js")
+    app.connect("autodoc-skip-member", skip_sklearn_metadata_request)
 
