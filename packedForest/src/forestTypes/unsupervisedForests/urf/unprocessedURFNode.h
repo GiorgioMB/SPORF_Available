@@ -6,6 +6,7 @@
 #include <vector>
 #include <random>
 #include <assert.h>
+#include "../randomEngineUnsupervised.h"
 
 namespace fp{
 
@@ -58,14 +59,10 @@ namespace fp{
 					for (int i=0; i < fpSingleton::getSingleton().returnNumFeatures(); ++i){
 						featuresToTry.push_back(i);
 					}
-                                        std::random_device rd; // obtain a random number from hardware
-                                        std::mt19937 eng(rd()); // seed the generator
-
                                         int tempSwap;
 
                                         for(int locationToMove = 0; locationToMove < fpSingleton::getSingleton().returnMtry(); locationToMove++){
-                                                std::uniform_int_distribution<> distr(locationToMove, fpSingleton::getSingleton().returnNumFeatures()-1);
-                                                int randomPosition = distr(eng);
+                                                int randomPosition = unsupervisedRandomInt(locationToMove, fpSingleton::getSingleton().returnNumFeatures()-1);
                                                 tempSwap = featuresToTry[locationToMove];
                                                 featuresToTry[locationToMove] = featuresToTry[randomPosition];
                                                 featuresToTry[randomPosition] = tempSwap;

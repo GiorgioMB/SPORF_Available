@@ -11,6 +11,8 @@
 #include <chrono>
 #include <cstdlib>
 #include "urerfTree.h"
+#include <limits>
+#include "../randomEngineUnsupervised.h"
 
 namespace fp {
 	template <typename T>
@@ -42,8 +44,15 @@ namespace fp {
 			}
 
 			inline void growTrees(){
+				// One seed per tree, drawn serially from the forest's seeded generator,
+				// so the result depends only on the "seed" parameter.
+				std::vector<int> treeSeeds(trees.size());
+				for(auto& treeSeed : treeSeeds){
+					treeSeed = fpSingleton::getSingleton().genRandom(std::numeric_limits<int>::max());
+				}
 #pragma omp parallel for num_threads(fpSingleton::getSingleton().returnNumThreads())
 				for(int i = 0; i < (int)trees.size(); ++i){
+					unsupervisedRandomEngine().seed(treeSeeds[i]);
 					trees[i].growTree();
 					trees[i].updateSimMat(simMat, pairMat);
 					trees[i].updateSimMatOut(simMat, pairMat);

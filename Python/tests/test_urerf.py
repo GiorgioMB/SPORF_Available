@@ -26,7 +26,7 @@ def test_urerf(projection_matrix):
         n_samples=n_samples, centers=n_classes, n_features=2, random_state=2 ** 4
     )
 
-    clf = UnsupervisedRandomForest(projection_matrix=projection_matrix)
+    clf = UnsupervisedRandomForest(projection_matrix=projection_matrix, random_state=1)
     clf.fit(X)
     sim_mat = clf.transform()
 
@@ -36,3 +36,22 @@ def test_urerf(projection_matrix):
     predict_labels = cluster.fit_predict(sim_mat)
     score = adjusted_rand_score(y, predict_labels)
     assert score > 0.9
+
+
+@pytest.mark.parametrize("projection_matrix", ("RerF", "Base"))
+def test_urerf_random_state(projection_matrix):
+    X, _ = make_blobs(n_samples=50, centers=2, n_features=2, random_state=0)
+
+    def similarity(random_state, n_jobs=1):
+        clf = UnsupervisedRandomForest(
+            projection_matrix=projection_matrix,
+            n_estimators=20,
+            random_state=random_state,
+            n_jobs=n_jobs,
+        )
+        return clf.fit(X).transform()
+
+    # The same seed gives the same forest, whatever the number of threads.
+    assert np.array_equal(similarity(1), similarity(1))
+    assert np.array_equal(similarity(1), similarity(1, n_jobs=2))
+    assert not np.array_equal(similarity(1), similarity(2))

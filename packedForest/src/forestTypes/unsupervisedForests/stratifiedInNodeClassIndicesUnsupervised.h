@@ -6,6 +6,7 @@
 #include <vector>
 #include <algorithm>
 #include <limits>
+#include "randomEngineUnsupervised.h"
 
 namespace fp{
 
@@ -37,11 +38,6 @@ namespace fp{
 			inline void createInAndOutSets(const int &numObs){
 				std::vector<int> potentialSamples(numObs);
 
-				std::random_device rd; // obtain a random number from hardware
-				std::mt19937 eng(rd()); // seed the generator
-
-				std::uniform_int_distribution<> distr(0, numObs-1);
-
 				for(int i=0; i < numObs; ++i){
 					potentialSamples[i] = i;
 				}
@@ -50,7 +46,7 @@ namespace fp{
 				int randomObsID;
 				int tempMoveObs;
 				for(int n=0; n<numObs; n++){
-					randomObsID = distr(eng);
+					randomObsID = unsupervisedRandomInt(0, numObs-1);
 					inSamples[fpSingleton::getSingleton().returnLabel(potentialSamples[randomObsID])].push_back(potentialSamples[randomObsID]);
 					inSamps.push_back(potentialSamples[randomObsID]);
 					if(randomObsID < numUnusedObs){
@@ -77,7 +73,7 @@ namespace fp{
 				for(int i=0; i < numObs; ++i){
 					random_indices[i] = i;
 				}
-				std::random_shuffle(random_indices.begin(), random_indices.end());
+				unsupervisedShuffle(random_indices.begin(), random_indices.end());
 				int indx = (int) ((1-bagging)*(float)numObs);
 				int counter = 0;
 				for(auto i : random_indices)

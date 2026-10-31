@@ -6,6 +6,7 @@
 #include <vector>
 #include <random>
 #include <assert.h>
+#include "../randomEngineUnsupervised.h"
 
 namespace fp{
 
@@ -60,8 +61,8 @@ namespace fp{
 					int rndMtry;
 					int rndFeature;
 					for (int i=0; i < fpSingleton::getSingleton().returnMtry(); ++i){
-						rndMtry = std::rand() % fpSingleton::getSingleton().returnMtry();
-						rndFeature = std::rand() % fpSingleton::getSingleton().returnNumFeatures();
+						rndMtry = unsupervisedRandomInt(0, fpSingleton::getSingleton().returnMtry() - 1);
+						rndFeature = unsupervisedRandomInt(0, fpSingleton::getSingleton().returnNumFeatures() - 1);
 						featuresToTry[rndMtry].push_back(rndFeature);
 					}
 				}
