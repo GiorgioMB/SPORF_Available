@@ -28,14 +28,13 @@ This is to upload source to pypi.  To upload linux wheel binaries, see [manylinu
 1. Update packaging dependencies
 
     ```bash
-    pip install --upgrade setuptools wheel
-    pip install --upgrade twine
+    pip install --upgrade build twine
     ```
 
 1. Test upload on test.pypi.org (only source)
 
     ```bash
-    python setup.py sdist
+    python -m build --sdist
     twine upload --repository neurodata-test dist/*
     ```
 
@@ -50,13 +49,13 @@ This is to upload source to pypi.  To upload linux wheel binaries, see [manylinu
     1. On `Linux`, only upload source
 
         ```bash
-        python setup.py sdist
+        python -m build --sdist
         ```
 
     1. On `OSX` include `wheels`
 
         ```bash
-        python setup.py sdist bdist_wheel
+        python -m build
         ```
 
 1. If successful, upload version to PyPi

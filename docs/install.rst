@@ -11,7 +11,8 @@ Make sure you have the latest version of ``pip`` (the Python package manager)
 installed. If you do not, refer to the `Pip documentation
 <https://pip.pypa.io/en/stable/installing/>`_ and install ``pip`` first.
 
-Currently *RerF* is available on :ref:`Linux <linux>` and :ref:`MacOS <mac>`.
+Currently *RerF* is available on :ref:`Linux <linux>` and :ref:`MacOS <mac>`,
+and requires Python 3.8 or newer.
 
 From PyPI
 ---------
@@ -38,7 +39,7 @@ Make sure you have the appropriate build tools
 
 ::
 
-    sudo apt-get install build-essential cmake python3-dev libomp-dev libeigen3-dev   # Ubuntu/Debian
+    sudo apt-get install build-essential cmake python3-dev libomp-dev   # Ubuntu/Debian
 
 .. _mac:
 
@@ -71,12 +72,6 @@ Mac
   ::
 
       brew install llvm
-- Get eigen
-
-  ::
-  
-      brew install eigen
-
 - Set up paths to use llvm's ``clang``
 
   ::
@@ -128,7 +123,7 @@ Build from source
 
   ::
 
-      python setup.py clean --all
+      rm -rf build
 
 - Build using ``pip``
 
